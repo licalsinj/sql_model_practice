@@ -21,7 +21,8 @@ engine = create_engine(sqlite_url, echo=False)
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-def create_hero(hero: Hero) -> Hero | Exception:
+# HERO CREATE
+def create_hero(hero: Hero) -> Hero:
     try:
         with Session(engine) as session:
             session.add(hero)
@@ -29,29 +30,31 @@ def create_hero(hero: Hero) -> Hero | Exception:
             session.refresh(hero)
             return hero
     except Exception as e:
-        return e
+        raise e
 
 
-def create_heroes(heroes: list[Hero]) -> bool | Exception:
+def create_heroes(heroes: list[Hero]) -> bool:
     try:
         with Session(engine) as session:
             for hero in heroes:
                 session.add(hero)
             session.commit()
     except Exception as e:
-        return e
+        raise e
     return True
 
-def create_team(team: Team) -> Team | Exception:
-    try:
-        with Session(engine) as session:
-            session.add(team)
+def add_hero_to_team(hero: Hero, team: Team) -> Hero:
+    with Session(engine) as session:
+        try:
+            hero.team_id = team.id
+            session.add(hero)
             session.commit()
-            session.refresh(team)
-            return team
-    except Exception as e:
-        return e
+            session.refresh(hero)
+            return hero
+        except Exception as e:
+            raise e
 
+# HERO RETRIEVE 
 
 def select_heroes_by_name(name: str) -> list[Hero]:
     with Session(engine) as session:
@@ -85,13 +88,13 @@ def select_first_hero() -> Hero:
         statement = select(Hero)
         return session.exec(statement).first()
 
-def select_one_hero(name: str) -> Hero | Exception:
+def select_one_hero(name: str) -> Hero:
     with Session(engine) as session:
         statement = select(Hero).where(Hero.secret_name == name)
         try:
             return session.exec(statement).one()
-        except Exception as e :
-            return e
+        except Exception as e:
+            raise e
 
 def select_hero_by_id(id: int) -> Hero:
     with Session(engine) as session:
@@ -107,34 +110,91 @@ def select_n_with_offset(n: int, o: int) ->list[Hero]:
         statement = select(Hero).offset(o).limit(n)
         return session.exec(statement).all()
 
-def update_hero_age_by_name(age: int, name: str) -> Hero | Exception:
+# HERO UPDATES
+def update_hero_age_by_name(age: int, name: str) -> Hero:
+    with Session(engine) as session:
+        statement = select(Hero).where(Hero.name == name)
+        try:
+            hero = session.exec(statement).one()
+            hero.age = age
+            session.add(hero)
+            session.commit()
+            session.refresh(hero)
+            return hero
+        except Exception as e:
+                raise e
+
+def remove_hero_from_team(hero: Hero) -> Hero:
+    try:
+        with Session(engine) as session:
+            hero.team_id = None
+            session.add(hero)
+            session.commit()
+            session.refresh(hero)
+            return hero
+    except Exception as e:
+        raise e
+
+
+# HERO DELETE
+def delete_hero_by_name(name: str) -> str:
     with Session(engine) as session:
         statement = select(Hero).where(Hero.name == name)
         try:
             hero = session.exec(statement).one()
         except Exception as e:
-            return e
-        hero.age = age
-        session.add(hero)
-        session.commit()
-        session.refresh(hero)
-        return hero
-    
-def delete_hero_by_name(name: str) -> str | Exception:
-    with Session(engine) as session:
-        statement = select(Hero).where(Hero.name == name)
-        try:
-            hero = session.exec(statement).one()
-        except Exception as e:
-            return e
+            raise e
         session.delete(hero)
         session.commit()
         if session.exec(statement).first() == None:
             return f"Successfully Deleted Hero {name}"
         else: 
-            return RuntimeError(f"Hero {name} was NOT deleted for an unknown reason")
+            raise RuntimeError(f"Hero {name} was NOT deleted for an unknown reason")
     
+# TEAM CREATE
+def create_team(team: Team) -> Team:
+    try:
+        with Session(engine) as session:
+            session.add(team)
+            session.commit()
+            session.refresh(team)
+            return team
+    except Exception as e:
+        raise e
 
+# TEAM RETRIEVE
+def select_heroes_in_teams() -> list[(Hero, Team)]:
+    with Session(engine) as session:
+        statement = select(Hero, Team).where(Hero.team_id == Team.id)
+        # statement = select(Hero, Team).join(Team) # equivalent to above
+        try: 
+            results = session.exec(statement).all()
+            return results
+        except Exception as e:
+            raise e
+        
+def select_all_heroes_and_their_teams() -> list[(Hero, Team)]:
+    with Session(engine) as session:
+        statement = select(Hero, Team).join(Team, isouter=True)
+        try:
+            return session.exec(statement).all()
+        except Exception as e:
+            raise e
+        
+def select_heroes_by_team(team: Team) -> list[Hero]:
+    with Session(engine) as session:
+        try:
+            statement = select(Hero).join(Team).where(Hero.team_id == team.id)
+            return session.exec(statement).all()
+        except Exception as e:
+            raise e
+
+# TEAM UPDATE
+
+# TEAM DELETE
+
+
+            
 
 def main():
     try:
@@ -154,9 +214,11 @@ def main():
 
 
     # create a single hero
-    hero_1 = create_hero(Hero(name="Deadpond", secret_name="Dive Wilson",team_id=team_2.id))
-    if isinstance(hero_1, Exception):
-        raise hero_1
+    hero_1: Hero
+    try:
+        hero_1 = create_hero(Hero(name="Deadpond", secret_name="Dive Wilson",team_id=team_2.id))
+    except Exception as e:
+        raise e
 
     my_heroes = []
     my_heroes.append(Hero(name="Spider-Boy", secret_name="Pedro Parqueador"))
@@ -166,10 +228,18 @@ def main():
     my_heroes.append(Hero(name="Dr. Weird", secret_name="Steve Weird", age=36))
     my_heroes.append(Hero(name="Captain North America", secret_name="Esteban Rogelios", age=93))
     my_heroes.append(Hero(name="Spider-Youngster", secret_name="Mikey Moorales", age=18))
-    is_success = create_heroes(my_heroes)
-    if is_success != True:
-        raise is_success
+    try:
+        create_heroes(my_heroes)
+    except Exception as e:
+        raise e
     
+    print("Add Heroes to Teams")
+    add_hero_to_team(my_heroes[0],team_1)
+    add_hero_to_team(my_heroes[2],team_1)
+    add_hero_to_team(my_heroes[5],team_1)
+    add_hero_to_team(my_heroes[3],team_1)
+
+    print()
     print("Find Deadpond")
     for hero in select_heroes_by_name("Deadpond"):
         print(hero)
@@ -226,11 +296,37 @@ def main():
 
     print()
     print("Fail to update because no name")
-    print(update_hero_age_by_name(16,"spoder-boi"))
+    try:
+        update_hero_age_by_name(16,"spoder-boi")
+    except Exception as e:
+        print(f"Error: {e}")
 
     print()
     print("Delete Spider-Youngster")
     print(delete_hero_by_name("Spider-Youngster"))
+
+
+    print()
+    print("Find all heroes that belong to a team")
+    heroes_on_teams = select_heroes_in_teams()
+    for hero in heroes_on_teams:
+        print(hero)
+
+    print()
+    print("Find all heroes and associated team info if it's there")
+    heroes_on_teams = select_all_heroes_and_their_teams()
+    for hero in heroes_on_teams:
+        print(hero)
+
+    print()
+    print("Find Heroes on Preventers")
+    heroes_on_team = select_heroes_by_team(team_1)
+    for hero in heroes_on_team:
+        print(hero)
+
+    print()
+    print("Remove Black Lion from Preventers")
+    print(remove_hero_from_team(my_heroes[3]))
 
 if __name__ == "__main__":
     main()
