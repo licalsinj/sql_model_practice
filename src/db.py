@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import SQLModel, create_engine, text
 from dotenv import load_dotenv
 import os
 
@@ -10,3 +10,5 @@ engine = create_engine(sqlite_url, echo=False)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
+    with engine.connect() as connection:
+        connection.execute(text("PRAGMA foreign_keys=ON"))  # for SQLite only

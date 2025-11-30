@@ -1,5 +1,5 @@
-from sqlmodel import Field, Session, SQLModel, select
-from .db import engine
+from sqlmodel import Field, Relationship, Session, SQLModel, select
+from ..db import engine
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -9,7 +9,8 @@ class Team(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     headquarters: str
-
+    heroes: list["Hero"] = Relationship(back_populates="team")
+    
     # TEAM CREATE
     def create_team(team: Team) -> Team:
         try:
@@ -22,7 +23,7 @@ class Team(SQLModel, table=True):
             raise e
 
     # TEAM RETRIEVE
-    
+
     # TEAM UPDATE
 
     # TEAM DELETE

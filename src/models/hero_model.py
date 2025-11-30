@@ -1,5 +1,5 @@
-from sqlmodel import Field, Session, SQLModel, col, or_, select
-from .db import engine
+from sqlmodel import Field, Relationship, Session, SQLModel, col, or_, select
+from ..db import engine
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -10,8 +10,9 @@ class Hero(SQLModel, table=True):
     name: str = Field(index=True)
     secret_name: str
     age: int | None = Field(default=None, index=True)
-    team_id: int | None = Field(default=None, foreign_key="team.id")
-
+    team_id: int | None = Field(default=None, foreign_key="team.id", cascade_delete=True)
+    team: Team | None = Relationship(back_populates="heroes")
+    
     # HERO CREATE
     def create_hero(hero: Hero) -> Hero:
         try:
