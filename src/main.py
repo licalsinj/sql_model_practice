@@ -1,25 +1,9 @@
-from sqlmodel import Field, Session, SQLModel, col, create_engine, or_, select
 import os
+from dotenv import load_dotenv
+from sqlmodel import Session, col, or_, select
+from .db import engine, create_db_and_tables
+from .models import Hero, Team
 
-class Hero(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    secret_name: str
-    age: int | None = Field(default=None, index=True)
-    team_id: int | None = Field(default=None, foreign_key="team.id")
-
-class Team(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    headquarters: str
-
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-
-engine = create_engine(sqlite_url, echo=False)
-
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
 
 # HERO CREATE
 def create_hero(hero: Hero) -> Hero:
@@ -197,13 +181,14 @@ def select_heroes_by_team(team: Team) -> list[Hero]:
             
 
 def main():
+    load_dotenv(".venv/.env")
     try:
-        os.remove("database.db")
-        create_db_and_tables()
-    except Exception as e:
-        print(e)
-        quit()
-    
+        os.remove(os.getenv('DB_NAME'))
+    except:
+        print("No database.db to delete")
+
+    create_db_and_tables()
+
     team_1 = create_team(Team(name="Preventers", headquarters="Sharp Tower"))
     if isinstance(team_1, Exception):
         raise team_1
