@@ -21,14 +21,15 @@ engine = create_engine(sqlite_url, echo=False)
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-def create_hero(hero: Hero) -> bool | Exception:
+def create_hero(hero: Hero) -> Hero | Exception:
     try:
         with Session(engine) as session:
             session.add(hero)
             session.commit()
+            session.refresh(hero)
+            return hero
     except Exception as e:
         return e
-    return True
 
 
 def create_heroes(heroes: list[Hero]) -> bool | Exception:
@@ -41,14 +42,15 @@ def create_heroes(heroes: list[Hero]) -> bool | Exception:
         return e
     return True
 
-def create_team(team: Team) -> bool | Exception:
+def create_team(team: Team) -> Team | Exception:
     try:
         with Session(engine) as session:
             session.add(team)
             session.commit()
+            session.refresh(team)
+            return team
     except Exception as e:
         return e
-    return True
 
 
 def select_heroes_by_name(name: str) -> list[Hero]:
@@ -142,19 +144,31 @@ def main():
         print(e)
         quit()
     
+    team_1 = create_team(Team(name="Preventers", headquarters="Sharp Tower"))
+    if isinstance(team_1, Exception):
+        raise team_1
+
+    team_2 = create_team(Team(name="Z-Force", headquarters="Sister Margaret's Bar"))
+    if isinstance(team_1, Exception):
+        raise team_2
+
+
     # create a single hero
-    hero_1 = Hero(name="Deadpond", secret_name="Dive Wilson")
-    create_hero(hero_1)
+    hero_1 = create_hero(Hero(name="Deadpond", secret_name="Dive Wilson",team_id=team_2.id))
+    if isinstance(hero_1, Exception):
+        raise hero_1
 
     my_heroes = []
     my_heroes.append(Hero(name="Spider-Boy", secret_name="Pedro Parqueador"))
-    my_heroes.append(Hero(name="Rusty-Man", secret_name="Tommy Sharp", age=48))
+    my_heroes.append(Hero(name="Rusty-Man", secret_name="Tommy Sharp", age=48, team_id=team_1.id))
     my_heroes.append(Hero(name="Tarantula", secret_name="Natalia Roman-on", age=32))
     my_heroes.append(Hero(name="Black Lion", secret_name="Trevor Challa", age=35))
     my_heroes.append(Hero(name="Dr. Weird", secret_name="Steve Weird", age=36))
     my_heroes.append(Hero(name="Captain North America", secret_name="Esteban Rogelios", age=93))
     my_heroes.append(Hero(name="Spider-Youngster", secret_name="Mikey Moorales", age=18))
-    create_heroes(my_heroes)
+    is_success = create_heroes(my_heroes)
+    if is_success != True:
+        raise is_success
     
     print("Find Deadpond")
     for hero in select_heroes_by_name("Deadpond"):
